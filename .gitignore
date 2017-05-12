@@ -1,7 +1,11 @@
-*.log
-/target
-/docs
-/grails-*.zip
-/plugin.xml
+Thumbs.db
+.DS_Store
+.gradle
+build/
+.idea
+*.iml
+*.ipr
+*.iws
+.project
 .settings
-web-app
+.classpath

@@ -1,5 +1,4 @@
-import org.codehaus.groovy.grails.commons.DefaultGrailsDomainClass
-import org.codehaus.groovy.grails.commons.GrailsApplication
+package grails.sharding
 
 import com.jeffrick.grails.plugin.sharding.CurrentShard
 import com.jeffrick.grails.plugin.sharding.ShardConfig
@@ -10,15 +9,28 @@ import com.jeffrick.grails.plugin.sharding.annotation.Shard as ShardAnnotation
 import com.jeffrick.grails.plugins.services.ShardService
 import com.jeffrick.grails.plugins.sharding.Shard
 
-class ShardingGrailsPlugin {
-    def version = "1.0"
-    def grailsVersion = "2.0.0 > *"
+//import com.jeffrick.grails.plugin.sharding.CurrentShard
+import grails.core.GrailsApplication
+import grails.plugins.*
+import org.grails.core.DefaultGrailsDomainClass
+
+class GrailsShardingGrailsPlugin extends Plugin {
+
+    // the version or versions of Grails the plugin is designed for
+    def grailsVersion = "3.2.2 > *"
+    // resources that are excluded from plugin packaging
+
     def loadAfter = ['dataSource', 'domainClass', 'hibernate']
     def author = "Jeff Rick"
     def authorEmail = "jeffrick@gmail.com"
     def title = "Grails Shards Plugin"
     def description = 'Supports sharding of data'
     def documentation = "http://grails.org/plugin/sharding"
+    def pluginExcludes = [
+            "grails-app/views/error.gsp"
+    ]
+
+    def profiles = ['web']
 
     def license = 'APACHE'
     def scm = [url: 'https://github.com/jrick1977/grails-sharding']
@@ -26,18 +38,17 @@ class ShardingGrailsPlugin {
 //    def organization = [ name: "My Company", url: "http://www.my-company.com/" ]
     def developers = [ [ name: "Jeff Rick", email: "jeffrick@gmail.com" ]]
 
-    def doWithSpring = {
-
+    Closure doWithSpring() { {->
         def shardDataSources = [:]
 
         shardDataSources.put(0, ref("dataSource"))
         int shardId = 1
-        for (Map.Entry<String, Object> item in application.config.entrySet()) {
-            if (item.key.startsWith('dataSource_')) {
-                if (item.value.getProperty("shard")) {
-                    shardDataSources.put(shardId++, ref(item.key))
-                }
+        for (Map.Entry<String, Object> item in grailsApplication.config.dataSources) {
+            // println "the item==>>> $item"
+            if (item.value.getProperty("shard")) {
+                shardDataSources.put(shardId++, ref("dataSource_${item.key}"))
             }
+
         }
         
         Shards.shards = loadShardConfig(application)
@@ -52,14 +63,10 @@ class ShardingGrailsPlugin {
         // start and end.  This basically coordinates the starting and stopping of transactions
         // between the active shard and the index database
         entityInterceptor(ShardEntityInterceptor)
-    }
+    }}
 
-    def doWithDynamicMethods = { ctx ->
-
-        // Find the domain class the owning application has defined as
-        // the "Index" domain class.  This domain class is used to store
-        // the list of objects and the shard they live in
-        application.domainClasses.each {
+    void doWithDynamicMethods() {
+        grailsApplication.domainClasses.each {
             DefaultGrailsDomainClass domainClass ->
 
                 if (domainClass.clazz.isAnnotationPresent(ShardAnnotation)) {
@@ -70,7 +77,7 @@ class ShardingGrailsPlugin {
                     // event handlers
                     domainClass.metaClass.beforeInsert = {->
                         ShardAnnotation prop = domainClass.clazz.getAnnotation(ShardAnnotation)
-                        ShardService shardService = ctx.shardService
+                        ShardService shardService = applicationContext.shardService
 
                         // Before we insert we need to figure out the shard to assign ourselves to
                         def shardObject = shardService.getNextShard()
@@ -96,22 +103,23 @@ class ShardingGrailsPlugin {
         }
     }
 
-    private loadShards(GrailsApplication app) {
-        try {
-            def shards = [:]
-            int shardId = 1
-		app.config.each { key, value ->
-                if (key.startsWith('dataSource_')) {
-                    shards.put(shardId++, ref(key))
-                }
-            }
-            return shards
-        }
-        catch (e) {
-            println e.message
-            e.printStackTrace()
-            return [:]
-        }
+    void doWithApplicationContext() {
+        // TODO Implement post initialization spring config (optional)
+    }
+
+    void onChange(Map<String, Object> event) {
+        // TODO Implement code that is executed when any artefact that this plugin is
+        // watching is modified and reloaded. The event contains: event.source,
+        // event.application, event.manager, event.ctx, and event.plugin.
+    }
+
+    void onConfigChange(Map<String, Object> event) {
+        // TODO Implement code that is executed when the project configuration changes.
+        // The event is the same as for 'onChange'.
+    }
+
+    void onShutdown(Map<String, Object> event) {
+        // TODO Implement code that is executed when the application shuts down (optional)
     }
 
     private loadShardConfig(GrailsApplication app) {
@@ -119,17 +127,15 @@ class ShardingGrailsPlugin {
             def shards = []
             def dataSourceLookup = [:]
             int shardId = 1
-		app.config.each { key, value ->
-                if (key.startsWith('dataSource_')) {
-                    if (value.getProperty("shard")) {
-                        ShardConfig shardConfig = new ShardConfig()
-                        shardConfig.id = shardId++
-                        shardConfig.name = key.replace("dataSource_", "")
-                        shards.add(shardConfig)
-
-                    }
-                    dataSourceLookup.put(key, value)
+            app.config.dataSources.each { key, value ->
+                println "key  = $key value = $value"
+                if (value.getProperty("shard")) {
+                    ShardConfig shardConfig = new ShardConfig()
+                    shardConfig.id = shardId++
+                    shardConfig.name = key
+                    shards.add(shardConfig)
                 }
+                dataSourceLookup.put(key, value)
             }
 
             CurrentShard.setDataSourceLookup(dataSourceLookup)
