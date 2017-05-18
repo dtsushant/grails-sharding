@@ -1,6 +1,7 @@
 package com.jeffrick.grails.plugin.sharding
 
-
+import com.jeffrick.grails.plugin.sharding.annotation.Shard
+import grails.util.Holders
 import org.grails.core.DefaultGrailsDomainClass
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionStatus
@@ -121,16 +122,15 @@ class CurrentShard {
 
     static public String getIndexDataSourceName() {
         if (_indexDataSource.get() == null) {
-
-            def grailsApplication = new com.jeffrick.grails.plugins.sharding.Shard().domainClass.grailsApplication
-
+            def grailsApplication = Holders.grailsApplication
             grailsApplication.domainClasses.each {
                 DefaultGrailsDomainClass domainClass ->
-                if (domainClass.clazz.isAnnotationPresent(Shard)) {
-                    def prop = domainClass.clazz.getAnnotation(Shard)
-                    _indexDataSource.set(prop.indexDataSourceName())
-                    return (prop.indexDataSourceName())
-                }
+                    println domainClass
+                    if (domainClass.clazz.isAnnotationPresent(Shard)) {
+                        def prop = domainClass.clazz.getAnnotation(Shard)
+                        _indexDataSource.set(prop.indexDataSourceName())
+                        return (prop.indexDataSourceName())
+                    }
             }
 
         }

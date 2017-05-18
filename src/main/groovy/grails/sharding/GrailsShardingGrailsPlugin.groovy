@@ -62,7 +62,7 @@ class GrailsShardingGrailsPlugin extends Plugin {
         // Define an entityInterceptor that will be triggered when transactions
         // start and end.  This basically coordinates the starting and stopping of transactions
         // between the active shard and the index database
-        entityInterceptor(ShardEntityInterceptor)
+//        entityInterceptor(ShardEntityInterceptor)
     }}
 
     void doWithDynamicMethods() {

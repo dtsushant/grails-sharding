@@ -64,7 +64,7 @@ class ShardService {
                 try {
                     println "the session factory ${sessionFactory.getCurrentSession().getClass().getCanonicalName()}"
                     println "THe session transaction ${sessionFactory.getCurrentSession().transaction.getClass().getCanonicalName()}"
-                    CurrentShard.setAutoCommit sessionFactory.getCurrentSession().transaction == null
+                    CurrentShard.setAutoCommit true
                 } catch (HibernateException he) {
                     CurrentShard.setAutoCommit true
                 } catch (Exception e) {
